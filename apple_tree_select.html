@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
+    <title>苹果树选购系统 · 在线同步版</title>
+    <style>
+        :root {
+            --bg: #f5f0e8;
+            --panel-bg: #fffef9;
+            --avail-crown1: #8cc63f;
+            --avail-crown2: #6ba82d;
+            --avail-crown3: #4d8c1c;
+            --sel-crown: #ffed10;
+            --saved-crown1: #c4c4c4;
+            --saved-crown2: #a0a0a0;
+            --saved-crown3: #7e7e7e;
+            --trunk: #8B5E3C;
+            --text: #3e2f1c;
+            --border: #c9b896;
+            --accent: #8b6914;
+            --cell-size: 70px;
+            --crown-size: 46px;
+            --transition: 0.18s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #e8e0d3;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 12px;
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 1500px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.13);
+            border: 1px solid #e0d8c8;
+            position: relative;
+        }
+        .compass {
+            position: absolute;
+            top: 75px;
+            right: 20px;
+            z-index: 50;
+            pointer-events: none;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: rgba(255, 254, 249, 0.9);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            border: 2.5px solid #c9b896;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass-inner { position: relative; width: 46px; height: 46px; border-radius: 50%; }
+        .compass-cross-h, .compass-cross-v { position: absolute; background: #d4c5a0; opacity: 0.6; }
+        .compass-cross-h { width: 36px; height: 1px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .compass-cross-v { width: 1px; height: 36px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .compass-arrow {
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 14px solid #c0392b;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+            z-index: 2;
+        }
+        .compass-label { position: absolute; font-weight: 700; font-size: 10px; }
+        .compass-label.n { top: -1px; left: 50%; transform: translateX(-50%); color: #c0392b; }
+        .compass-label.s { bottom: -1px; left: 50%; transform: translateX(-50%); color: #5d8a4e; }
+        .compass-label.w { left: -1px; top: 50%; transform: translateY(-50%); color: #3e2f1c; }
+        .compass-label.e { right: -1px; top: 50%; transform: translateY(-50%); color: #3e2f1c; }
+        .compass-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #8b6914;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .track-container {
+            background: linear-gradient(180deg, #faf7f0 0%, #f0e8d5 100%);
+            padding: 10px 15px;
+            border-bottom: 2px solid #d4c5a0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .track-rail {
+            display: flex;
+            background: #c9b896;
+            border-radius: 30px;
+            padding: 4px;
+            gap: 2px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+        .track-btn {
+            padding: 8px 16px;
+            border-radius: 26px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            background: transparent;
+            color: #5c4320;
+            transition: all var(--transition);
+            min-width: 48px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .track-btn.active {
+            background: #fffef9;
+            color: #3e2f1c;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            font-weight: 700;
+        }
+        .add-zone-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #fff;
+            border: 1.5px solid var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .add-zone-btn:hover { background: #8b6914; color: #fff; }
+        .settings-bar {
+            padding: 8px 15px;
+            background: #fdfcf7;
+            border-bottom: 1px solid #e8dfcc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        .btn-sm {
+            padding: 8px 14px;
+            border-radius: 18px;
+            border: 1.5px solid #c9b896;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            background: #fffef9;
+            color: #5c4320;
+            transition: all var(--transition);
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-sm.primary { background: #8b6914; color: #fff; border-color: #8b6914; }
+        .btn-sm.locked { background: #e8e8e8; color: #999; border-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+        .sync-status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .sync-status.online { background: #e8f5e9; color: #388e3c; }
+        .sync-status.offline { background: #fff3e0; color: #e65100; }
+        .sync-status.error { background: #fdecea; color: #c0392b; }
+        .mode-indicator {
+            font-weight: 700;
+            color: #c0392b;
+            background: #fdecea;
+            padding: 5px 12px;
+            border-radius: 14px;
+            display: none;
+        }
+        .main-content { padding: 15px; overflow-x: auto; min-height: 400px; display: flex; justify-content: center; background: #fdfaf4; }
+        .grid-table { display: grid; gap: 3px; background: #e8dfcc; border: 2px solid #d4c5a0; border-radius: 6px; padding: 4px; }
+        .grid-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: var(--cell-size);
+            min-height: var(--cell-size);
+            cursor: default;
+            transition: all var(--transition);
+            position: relative;
+            user-select: none;
+            border-radius: 6px;
+            background: transparent;
+            pointer-events: none;
+            padding: 2px 3px 3px;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+        }
+        .tree-crown {
+            width: var(--crown-size);
+            height: var(--crown-size);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 8px;
+            color: #fff;
+            text-align: center;
+            padding: 4px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 2px 3px rgba(255, 255, 255, 0.25);
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+            transition: all var(--transition);
+            overflow: hidden;
+            word-break: break-word;
+        }
+        .tree-crown .cell-id { font-weight: 700; font-size: inherit; line-height: 1.2; display: block; }
+        .tree-crown .cell-buyer {
+            font-weight: 600;
+            font-size: 0.9em;
+            line-height: 1.2;
+            margin-top: 1px;
+            color: #3e2f1c;
+            text-shadow: none;
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tree-trunk {
+            width: 7px;
+            height: 14px;
+            background: var(--trunk);
+            border-radius: 2px 2px 3px 3px;
+            flex-shrink: 0;
+            z-index: 1;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+            margin-top: -3px;
+        }
+        .grid-cell.available { cursor: pointer; pointer-events: auto; }
+        .grid-cell.available .tree-crown {
+            background: radial-gradient(ellipse at 38% 32%, var(--avail-crown1), var(--avail-crown2) 55%, var(--avail-crown3) 100%);
+            border: 2.5px solid #4d8c1c;
+        }
+        .grid-cell.available:hover .tree-crown, .grid-cell.available:active .tree-crown { transform: scale(1.1); box-shadow: 0 4px 14px rgba(80, 140, 30, 0.35); }
+        .grid-cell.selected { cursor: pointer; pointer-events: auto; }
+        .grid-cell.selected .tree-crown {
+            background: var(--sel-crown);
+            border: 3px solid #d4b80c;
+            transform: scale(1.06);
+            box-shadow: 0 0 0 4px rgba(212, 184, 12, 0.25), 0 4px 12px rgba(160, 140, 10, 0.20);
+        }
+        .grid-cell.selected .tree-crown .cell-id, .grid-cell.selected .tree-crown .cell-buyer { color: #3e2f1c; text-shadow: none; }
+        .grid-cell.saved { cursor: default; pointer-events: none; }
+        .grid-cell.saved .tree-crown {
+            background: radial-gradient(ellipse at 38% 32%, var(--saved-crown1), var(--saved-crown2) 55%, var(--saved-crown3) 100%);
+            border: 2.5px solid #8a8a8a;
+        }
+        .grid-cell.saved .tree-crown .cell-id, .grid-cell.saved .tree-crown .cell-buyer { color: #3e2f1c; text-shadow: none; }
+        .grid-cell.saved.admin-available { cursor: pointer; pointer-events: auto; }
+        .grid-cell.saved.admin-available .tree-crown { border: 3px dashed #8b6914 !important; box-shadow: 0 0 0 4px rgba(139, 105, 20, 0.18) !important; }
+        .grid-cell.saved.admin-available:hover .tree-crown { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(139, 105, 20, 0.25) !important; }
+        .grid-cell.empty-cell .tree-crown, .grid-cell.empty-cell .tree-trunk { display: none; }
+        .row-header, .col-header {
+            background: #faf7f0;
+            border: 1px solid #d4c5a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 10px;
+            color: #5c4320;
+            min-width: 40px;
+            min-height: 28px;
+            padding: 2px 4px;
+        }
+        .corner-cell { background: #f0e8d5; border: 1px solid #d4c5a0; }
+        .action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: #fdfcf7;
+            border-top: 2px solid #e0d8c8;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 18px;
+            border-radius: 25px;
+            border: 2px solid #c9b896;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            background: #fffef9;
+            color: #5c4320;
+            transition: all var(--transition);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn.primary-action { background: #8b6914; color: #fff; border-color: #8b6914; }
+        .btn.danger-action { color: #c0392b; border-color: #c0392b; }
+        .btn.print-action { color: #5d8a4e; border-color: #5d8a4e; }
+        .selected-count {
+            font-weight: 700;
+            color: #8b6914;
+            background: #faf7f0;
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid #d4c5a0;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            font-size: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            animation: toastIn 0.35s ease, toastOut 0.35s ease 2.4s forwards;
+            pointer-events: none;
+        }
+        .toast.success { background: #5d8a4e; color: #fff; }
+        .toast.info { background: #3e2f1c; color: #fff; }
+        .toast.warning { background: #c0392b; color: #fff; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-30px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-30px); } }
+        @media (max-width: 768px) {
+            :root { --cell-size: 60px; --crown-size: 42px; }
+            .tree-crown { font-size: 7px; padding: 3px; }
+            .tree-trunk { width: 6px; height: 12px; }
+            .compass { width: 48px; height: 48px; top: 65px; right: 10px; }
+            .btn { padding: 8px 14px; font-size: 13px; min-height: 44px; }
+            .track-btn { padding: 6px 12px; font-size: 13px; min-height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="compass">
+            <div class="compass-inner">
+                <div class="compass-cross-h"></div><div class="compass-cross-v"></div>
+                <div class="compass-arrow"></div>
+                <span class="compass-label n">北</span><span class="compass-label s">南</span>
+                <span class="compass-label w">西</span><span class="compass-label e">东</span>
+                <div class="compass-dot"></div>
+            </div>
+        </div>
+        <div class="track-container">
+            <span style="font-weight:700;color:#8b6914;">🌳 分区</span>
+            <div class="track-rail" id="trackRail"></div>
+            <button class="add-zone-btn" onclick="addNewZone()">➕ 新建分区</button>
+            <span class="sync-status offline" id="syncStatus" style="margin-left:auto;">⏳ 离线模式</span>
+        </div>
+        <div class="settings-bar">
+            <span style="font-weight:700;color:#8b6914;">⚙️ <span id="currentZoneName">A区</span></span>
+            <label>行:</label><input type="number" id="rowsInput" min="1" max="200" value="10">
+            <label>列:</label><input type="number" id="colsInput" min="1" max="200" value="15">
+            <button class="btn-sm primary" onclick="applyCurrentZoneSize()">应用</button>
+            <button class="btn-sm" id="importBtn" onclick="handleImportClick()">📥 导入Excel</button>
+            <span class="mode-indicator" id="adminModeIndicator">🔧 管理模式</span>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
+        </div>
+        <div class="main-content"><div class="grid-wrapper" id="gridWrapper"></div></div>
+        <div class="action-bar">
+            <span class="selected-count" id="selectedCountDisplay">🌱 已选中：0 棵</span>
+            <button class="btn primary-action" onclick="saveSelected()">💾 保存选购</button>
+            <button class="btn danger-action" id="adminBtn" onclick="toggleAdminMode()">🔒 管理员修改</button>
+            <button class="btn print-action" onclick="window.print()">🖨️ 打印表</button>
+        </div>
+    </div>
+    <script>
+        (function() {
+            // ==================== Firebase 云端配置 ====================
+            // 🔥 请替换为您自己的 Firebase 配置（免费注册：https://firebase.google.com）
+            // 1. 创建项目 → 2. 启用 Realtime Database → 3. 规则设为公开读写 → 4. 复制配置
+            const FIREBASE_DB_URL = 'YOUR_FIREBASE_DB_URL'; // 例如: https://xxx-default-rtdb.firebaseio.com
+            const STORAGE_KEY = 'apple_tree_local_v7';
+            const ADMIN_PASS = '0000';
+            const IMPORT_PASS = '1111';
+
+            // ==================== 数据同步引擎 ====================
+            let syncOnline = false;
+            let syncTimer = null;
+            let lastCloudData = null;
+
+            function updateSyncStatus(status) {
+                syncOnline = (status === 'online');
+                const el = document.getElementById('syncStatus');
+                if (!el) return;
+                el.className = 'sync-status ' + status;
+                if (status === 'online') el.textContent = '☁️ 云端同步';
+                else if (status === 'offline') el.textContent = '⏳ 离线模式';
+                else el.textContent = '⚠️ 同步失败';
+            }
+
+            // 推送到云端
+            async function pushToCloud(data) {
+                if (!FIREBASE_DB_URL || FIREBASE_DB_URL === 'YOUR_FIREBASE_DB_URL') {
+                    updateSyncStatus('offline');
+                    return false;
+                }
+                try {
+                    const resp = await fetch(FIREBASE_DB_URL + '/appleTreeData.json', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (resp.ok) {
+                        updateSyncStatus('online');
+                        lastCloudData = JSON.stringify(data);
+                        return true;
+                    }
+                    throw new Error('HTTP ' + resp.status);
+                } catch (e) {
+                    console.warn('云端推送失败:', e.message);
+                    updateSyncStatus('error');
+                    return false;
+                }
+            }
+
+            // 从云端拉取
+            async function pullFromCloud() {
+                if (!FIREBASE_DB_URL || FIREBASE_DB_URL === 'YOUR_FIREBASE_DB_URL') {
+                    updateSyncStatus('offline');
+                    return null;
+                }
+                try {
+                    const resp = await fetch(FIREBASE_DB_URL + '/appleTreeData.json');
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.json();
+                    updateSyncStatus('online');
+                    return data;
+                } catch (e) {
+                    console.warn('云端拉取失败:', e.message);
+                    updateSyncStatus('error');
+                    return null;
+                }
+            }
+
+            // 智能同步：本地优先，云端备份
+            async function smartSave() {
+                const dataToSave = {
+                    zones: app.zones,
+                    curId: app.curId,
+                    excelImported: app.excelImported,
+                    lastUpdated: Date.now()
+                };
+                // 始终保存本地
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                // 推送到云端
+                await pushToCloud(dataToSave);
+            }
+
+            // ==================== XLSX 加载 ====================
+            let xlsxReady = false;
+
+            function loadXLSX(cb) {
+                if (typeof XLSX !== 'undefined') { xlsxReady = true;
+                    cb(true); return; }
+                const cdns = [
+                    'https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+                ];
+                tryLoad(0);
+
+                function tryLoad(i) {
+                    if (i >= cdns.length) { cb(false); return; }
+                    const s = document.createElement('script');
+                    s.src = cdns[i];
+                    s.onload = () => { xlsxReady = true;
+                        cb(true); };
+                    s.onerror = () => tryLoad(i + 1);
+                    document.head.appendChild(s);
+                }
+            }
+
+            function parseCSV(t) {
+                return t.split(/\r?\n/).filter(l => l.trim()).map(l => {
+                    let r = [],
+                        q = false,
+                        c = '';
+                    for (let ch of l) {
+                        if (ch === '"') q = !q;
+                        else if (ch === ',' && !q) { r.push(c.trim());
+                            c = ''; } else c += ch;
+                    }
+                    r.push(c.trim());
+                    return r;
+                });
+            }
+
+            // ==================== 应用数据 ====================
+            function defaultZones() {
+                return [
+                    { id: 'A区', name: 'A区', rows: 10, cols: 12, trees: {} },
+                    { id: 'B区', name: 'B区', rows: 8, cols: 10, trees: {} },
+                    { id: 'C区', name: 'C区', rows: 8, cols: 14, trees: {} }
+                ];
+            }
+            let app = { zones: [], curId: null, excelImported: false };
+            let curZone = null,
+                sel = new Set(),
+                adm = false;
+
+            async function load() {
+                // 1. 先读本地
+                let s = localStorage.getItem(STORAGE_KEY);
+                let localData = null;
+                if (s) {
+                    try { localData = JSON.parse(s); } catch (e) {}
+                }
+                if (localData && localData.zones && localData.zones.length) {
+                    app = localData;
+                } else {
+                    app = { zones: defaultZones(), curId: null, excelImported: false };
+                }
+
+                // 2. 尝试从云端同步
+                const cloudData = await pullFromCloud();
+                if (cloudData && cloudData.zones && cloudData.zones.length) {
+                    // 比较时间戳，取最新的
+                    const localTime = localData?.lastUpdated || 0;
+                    const cloudTime = cloudData.lastUpdated || 0;
+                    if (cloudTime > localTime) {
+                        app = cloudData;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+                    } else if (localTime > cloudTime) {
+                        await pushToCloud(localData || app);
+                    }
+                } else if (localData && localData.zones) {
+                    // 云端无数据，推送本地到云端
+                    await pushToCloud(localData);
+                }
+
+                if (!app.curId || !app.zones.find(z => z.id === app.curId)) {
+                    app.curId = app.zones[0]?.id || null;
+                }
+                curZone = app.zones.find(z => z.id === app.curId) || app.zones[0];
+                if (app.excelImported === undefined) app.excelImported = false;
+
+                // 3. 启动定期同步
+                startAutoSync();
+            }
+
+            function startAutoSync() {
+                if (syncTimer) clearInterval(syncTimer);
+                // 每30秒检查一次云端更新
+                syncTimer = setInterval(async () => {
+                    const cloudData = await pullFromCloud();
+                    if (cloudData && cloudData.zones && cloudData.lastUpdated > (app.lastUpdated || 0)) {
+                        app = cloudData;
+                        curZone = app.zones.find(z => z.id === app.curId) || app.zones[0];
+                        if (app.excelImported === undefined) app.excelImported = false;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+                        sel.clear();
+                        adm = false;
+                        renderAll();
+                        showToast('🔄 检测到云端数据更新，已自动同步', 'info');
+                    }
+                }, 30000);
+            }
+
+            async function save() {
+                app.lastUpdated = Date.now();
+                await smartSave();
+            }
+
+            function gcs(id) { let s = 1;
+                for (let z of app.zones) { if (z.id === id) break;
+                    s += z.cols; } return s; }
+
+            function gt(z, c, r) { return z.trees[`${c}-${r}`] || null; }
+
+            async function st(z, c, r, t) { if (t === null) delete z.trees[`${c}-${r}`];
+                else z.trees[`${c}-${r}`] = t;
+                await save(); }
+
+            function renderAll() {
+                document.getElementById('currentZoneName').textContent = curZone?.name || '';
+                document.getElementById('rowsInput').value = curZone?.rows || 10;
+                document.getElementById('colsInput').value = curZone?.cols || 10;
+                renderTrack();
+                renderGrid();
+                updateSelCount();
+                updateAdminUI();
+                updateImportBtnUI();
+            }
+
+            function updateImportBtnUI() {
+                const btn = document.getElementById('importBtn');
+                if (app.excelImported) {
+                    btn.classList.add('locked');
+                    btn.textContent = '🔒 导入已锁定';
+                    btn.title = '数据已导入，需输入密码解锁重新导入';
+                } else {
+                    btn.classList.remove('locked');
+                    btn.textContent = '📥 导入Excel';
+                    btn.title = '';
+                }
+            }
+
+            function handleImportClick() {
+                if (app.excelImported) {
+                    const pwd = prompt('导入功能已锁定。请输入解锁密码以重新导入：');
+                    if (pwd === null) return;
+                    if (pwd !== IMPORT_PASS) { showToast('❌ 密码错误', 'warning'); return; }
+                    showToast('✅ 已解锁导入功能', 'success');
+                    app.excelImported = false;
+                    save();
+                    updateImportBtnUI();
+                    document.getElementById('excelFileInput').click();
+                } else {
+                    document.getElementById('excelFileInput').click();
+                }
+            }
+
+            function renderTrack() {
+                let r = document.getElementById('trackRail');
+                r.innerHTML = app.zones.map(z =>
+                    `<button class="track-btn ${z.id===app.curId?'active':''}" data-zone="${z.id}">🌳 ${z.name}</button>`
+                ).join('');
+                r.querySelectorAll('.track-btn').forEach(b => b.onclick = () => switchZone(b.dataset.zone));
+            }
+
+            function switchZone(id) {
+                let z = app.zones.find(z => z.id === id);
+                if (!z) return;
+                app.curId = id;
+                curZone = z;
+                sel.clear();
+                adm = false;
+                save();
+                renderAll();
+            }
+
+            function renderGrid() {
+                let w = document.getElementById('gridWrapper');
+                if (!curZone) { w.innerHTML = '<div style="padding:60px;">请导入Excel或新建分区</div>'; return; }
+                let { rows, cols } = curZone,
+                    gs = gcs(curZone.id);
+                let gc = `50px repeat(${cols}, minmax(var(--cell-size),1fr))`;
+                let gr = `repeat(${rows}, minmax(var(--cell-size),1fr)) 30px`;
+                let h =
+                `<div class="grid-table" style="grid-template-columns:${gc};grid-template-rows:${gr};">`;
+                for (let r = 0; r < rows; r++) {
+                    let rn = r + 1,
+                        dr = rows - r,
+                        rl = String(rn).padStart(2, '0');
+                    h +=
+                    `<div class="row-header" style="grid-column:1;grid-row:${dr};">${rl}排</div>`;
+                    for (let c = 0; c < cols; c++) {
+                        let cn = c + 1,
+                            t = gt(curZone, cn, rn),
+                            key = `${curZone.id}-${cn}-${rn}`;
+                        let isSel = sel.has(key),
+                            aid =
+                            `${curZone.id.replace('区','')}${String(gs+c).padStart(2,'0')}-${rl}`;
+                        let cls = 'grid-cell empty-cell',
+                            lab = '',
+                            buy = '',
+                            onclick = '';
+                        if (t) {
+                            lab = t.label || aid;
+                            buy = t.buyer || '';
+                            if (t.status === 'saved') {
+                                cls = 'grid-cell saved';
+                                if (adm) { cls += ' admin-available';
+                                    onclick =
+                                    `onclick="adminEditTree('${curZone.id}',${cn},${rn})"`; }
+                            } else if (t.status === 'selected' || isSel) {
+                                cls = 'grid-cell selected';
+                                if (!adm) onclick =
+                                `onclick="handleCellClick('${curZone.id}',${cn},${rn})"`;
+                            } else {
+                                cls = 'grid-cell available';
+                                if (!adm) onclick =
+                                `onclick="handleCellClick('${curZone.id}',${cn},${rn})"`;
+                            }
+                        }
+                        h +=
+                        `<div class="${cls}" style="grid-column:${c+2};grid-row:${dr};" ${onclick}>
+                            ${t?`<div class="tree-crown"><span class="cell-id">${lab}</span>${buy?`<span class="cell-buyer">${buy}</span>`:''}</div><div class="tree-trunk"></div>`:''}
+                        </div>`;
+                    }
+                }
+                h +=
+                `<div class="corner-cell" style="grid-column:1;grid-row:${rows+1};"></div>`;
+                for (let c = 0; c < cols; c++) h +=
+                    `<div class="col-header" style="grid-column:${c+2};grid-row:${rows+1};">${curZone.id.replace('区','')}${String(gs+c).padStart(2,'0')}</div>`;
+                h += '</div>';
+                w.innerHTML = h;
+            }
+            window.handleCellClick = async function(zid, c, r) {
+                if (adm) return;
+                let z = app.zones.find(z => z.id === zid);
+                if (!z) return;
+                let t = gt(z, c, r);
+                if (!t || t.status === 'saved') return;
+                let k = `${zid}-${c}-${r}`;
+                if (sel.has(k)) { sel.delete(k); if (t.status === 'selected') { t.status = 'available';
+                        await st(z, c, r, t); } } else { sel.add(k); if (t.status === 'available') { t.status = 'selected';
+                        await st(z, c, r, t); } }
+                renderGrid();
+                updateSelCount();
+            };
+
+            function updateSelCount() { document.getElementById('selectedCountDisplay').textContent =
+                `🌱 已选中：${sel.size} 棵`; }
+
+            async function saveSelected() {
+                if (adm) { showToast('请退出管理模式', 'info'); return; }
+                if (sel.size === 0) { showToast('请选中苹果树', 'info'); return; }
+                let cnt = 0,
+                    arr = [...sel];
+                for (let i = 0; i < arr.length; i++) {
+                    let [zid, cs, rs] = arr[i].split('-');
+                    let z = app.zones.find(z => z.id === zid);
+                    if (!z) continue;
+                    let c = +cs,
+                        r = +rs,
+                        t = gt(z, c, r);
+                    if (!t || (t.status !== 'available' && t.status !== 'selected')) continue;
+                    let lab = t.label ||
+                        `${zid.replace('区','')}${String(gcs(zid)+c-1).padStart(2,'0')}-${String(r).padStart(2,'0')}`;
+                    let name = prompt(`🌳 选购人姓名\n编号：${lab}\n(第${i+1}/${arr.length}棵)`, t.buyer || '');
+                    if (name === null) continue;
+                    t.buyer = name.trim();
+                    t.status = 'saved';
+                    await st(z, c, r, t);
+                    sel.delete(`${zid}-${c}-${r}`);
+                    cnt++;
+                }
+                renderGrid();
+                updateSelCount();
+                if (cnt) showToast(`已保存 ${cnt} 棵`, 'success');
+            }
+
+            function toggleAdminMode() {
+                if (!adm) { let p = prompt('管理员密码：'); if (p !== ADMIN_PASS) { showToast('密码错误', 'warning'); return; }
+                    adm = true;
+                    showToast('管理模式开启', 'success'); } else { adm = false;
+                    showToast('已退出', 'info'); }
+                renderAll();
+            }
+
+            function updateAdminUI() {
+                document.getElementById('adminModeIndicator').style.display = adm ? 'inline-block' : 'none';
+                let b = document.getElementById('adminBtn');
+                b.textContent = adm ? '🔓 退出管理模式' : '🔒 管理员修改';
+                b.classList.toggle('active-admin', adm);
+            }
+            window.adminEditTree = async function(zid, c, r) {
+                if (!adm) return;
+                let z = app.zones.find(z => z.id === zid);
+                if (!z) return;
+                let t = gt(z, c, r);
+                if (!t || t.status !== 'saved') return;
+                let lab = t.label ||
+                    `${zid.replace('区','')}${String(gcs(zid)+c-1).padStart(2,'0')}-${String(r).padStart(2,'0')}`;
+                let act = prompt(`管理员操作\n编号：${lab}\n选购人：${t.buyer||'无'}\n1-修改姓名\n2-重置状态(清空信息)`);
+                if (act === '1') { let nm = prompt('新姓名：', t.buyer || ''); if (nm !== null) { t.buyer = nm.trim();
+                        await st(z, c, r, t);
+                        renderGrid();
+                        showToast('姓名已更新', 'success'); } } else if (act === '2') { if (confirm(
+                        `重置「${lab}」并清空信息？`)) { t.status = 'available';
+                        t.buyer = '';
+                        await st(z, c, r, t);
+                        renderGrid();
+                        showToast('已重置', 'success'); } }
+            };
+
+            function importExcel() { document.getElementById('excelFileInput').click(); }
+
+            function handleExcelImport(e) {
+                let f = e.target.files[0];
+                if (!f) return;
+                let ext = f.name.split('.').pop().toLowerCase();
+                if (ext === 'csv') { let r = new FileReader();
+                    r.onload = ev => processCSV(ev.target.result);
+                    r.readAsText(f, 'UTF-8'); } else { loadXLSX(ok => { if (!ok) { showToast('XLSX库未加载',
+                        'warning'); return; } let r = new FileReader();
+                    r.onload = ev => { try { let wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+                            processWorkbook(wb); } catch (err) { showToast('解析失败', 'warning'); } };
+                    r.readAsArrayBuffer(f); }); }
+                e.target.value = '';
+            }
+
+            async function processWorkbook(wb) {
+                let names = wb.SheetNames;
+                if (!names.length) { showToast('无工作表', 'warning'); return; }
+                let nz = [];
+                for (let name of names) {
+                    let sheet = wb.Sheets[name],
+                        data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                    let rows = data.length,
+                        cols = Math.max(...data.map(r => Array.isArray(r) ? r.length : 0), 1);
+                    if (!rows || !cols) continue;
+                    let zone = { id: name, name: name, rows, cols, trees: {} };
+                    for (let r = 0; r < rows; r++) { let row = data[r] || []; for (let c = 0; c < cols; c++) { let v =
+                                String(row[c] || '').trim(); if (v) zone.trees[`${c+1}-${r+1}`] = { status: 'available',
+                                buyer: '', label: v }; } }
+                    nz.push(zone);
+                }
+                if (!nz.length) { showToast('无数据', 'warning'); return; }
+                app.zones = nz;
+                app.curId = nz[0].id;
+                curZone = nz[0];
+                sel.clear();
+                adm = false;
+                app.excelImported = true;
+                await save();
+                renderAll();
+                showToast(`✅ 导入成功，已同步到云端（${nz.length}个分区）`, 'success');
+            }
+
+            async function processCSV(txt) {
+                let data = parseCSV(txt),
+                    rows = data.length,
+                    cols = Math.max(...data.map(r => r.length), 1);
+                let zone = { id: 'CSV区', name: 'CSV区', rows, cols, trees: {} };
+                for (let r = 0; r < rows; r++) { let row = data[r] || []; for (let c = 0; c < cols; c++) { let v = (row[c] ||
+                        '').trim(); if (v) zone.trees[`${c+1}-${r+1}`] = { status: 'available', buyer: '', label: v }; } }
+                app.zones = [zone];
+                app.curId = zone.id;
+                curZone = zone;
+                sel.clear();
+                adm = false;
+                app.excelImported = true;
+                await save();
+                renderAll();
+                showToast('✅ CSV导入成功，已同步到云端', 'success');
+            }
+
+            function addNewZone() {
+                let name = prompt('新分区名称：');
+                if (!name?.trim()) return;
+                let id = name.trim();
+                if (app.zones.find(z => z.id === id)) { showToast('名称重复', 'warning'); return; }
+                app.zones.push({ id, name: id, rows: 10, cols: 10, trees: {} });
+                app.curId = id;
+                curZone = app.zones[app.zones.length - 1];
+                sel.clear();
+                adm = false;
+                save();
+                renderAll();
+            }
+
+            async function applyCurrentZoneSize() {
+                if (!curZone) return;
+                let nr = parseInt(document.getElementById('rowsInput').value) || curZone.rows;
+                let nc = parseInt(document.getElementById('colsInput').value) || curZone.cols;
+                curZone.rows = nr;
+                curZone.cols = nc;
+                for (let k in curZone.trees) { let [c, r] = k.split('-').map(Number); if (c > nc || r > nr) delete curZone
+                        .trees[k]; }
+                sel.clear();
+                adm = false;
+                await save();
+                renderAll();
+            }
+
+            function showToast(m, t = 'info') {
+                let o = document.querySelector('.toast');
+                if (o) o.remove();
+                let d = document.createElement('div');
+                d.className = `toast ${t}`;
+                d.textContent = m;
+                document.body.appendChild(d);
+                setTimeout(() => d.remove(), 2800);
+            }
+
+            // 暴露全局函数
+            window.addNewZone = addNewZone;
+            window.applyCurrentZoneSize = applyCurrentZoneSize;
+            window.importExcel = importExcel;
+            window.handleExcelImport = handleExcelImport;
+            window.handleImportClick = handleImportClick;
+            window.saveSelected = saveSelected;
+            window.toggleAdminMode = toggleAdminMode;
+            window.adminEditTree = window.adminEditTree;
+            window.handleCellClick = window.handleCellClick;
+
+            // ==================== 启动应用 ====================
+            async function init() {
+                await load();
+                if (!curZone && app.zones.length) { curZone = app.zones[0];
+                    app.curId = curZone.id; }
+                renderAll();
+                loadXLSX(() => {});
+            }
+            document.addEventListener('DOMContentLoaded', init);
+            if (document.readyState !== 'loading') init();
+        })();
+    </script>
+</body>
+</html>
